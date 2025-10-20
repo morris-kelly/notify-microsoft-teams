@@ -290,7 +290,23 @@ class MSTeams {
     const response = await client.sendRawAdaptiveCard(payload);
 
     if (response?.status !== 202) {
-      throw new Error('Failed to send notification to Microsoft Teams.\n' + 'Response:\n' + JSON.stringify(response, null, 2));
+      // Create a safe representation of the response to avoid circular reference errors
+      const safeResponse = {};
+      
+      // Safely copy properties, handling potential circular references
+      try {
+        safeResponse.status = response?.status;
+        safeResponse.statusText = response?.statusText;
+        safeResponse.headers = response?.headers ? JSON.parse(JSON.stringify(response.headers)) : undefined;
+        safeResponse.data = response?.data ? JSON.parse(JSON.stringify(response.data)) : undefined;
+      } catch (circularError) {
+        // If we still hit circular references, just include basic info
+        safeResponse.status = response?.status;
+        safeResponse.statusText = response?.statusText;
+        safeResponse.error = 'Response contained circular references';
+      }
+      
+      throw new Error('Failed to send notification to Microsoft Teams.\n' + 'Response:\n' + JSON.stringify(safeResponse, null, 2));
     }
   }
 }
